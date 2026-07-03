@@ -8,6 +8,9 @@
     "directory": "./dist",
     "binding": "ASSETS"
   },
+  "routes": [
+    { "pattern": "status.rjmlaird.co.uk", "custom_domain": true }
+  ],
   "observability": {
     "enabled": true
   }
