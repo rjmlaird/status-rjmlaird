@@ -1,0 +1,289 @@
+---
+import '../styles/global.css';
+import { checkAllServices, overallState, type ServiceResult, type ServiceState } from '../lib/services';
+
+// Fetched fresh on every request — this page is never pre-rendered as a
+// static snapshot, since a status page that lies about "operational" is
+// worse than no status page at all.
+export const prerender = false;
+
+const results = await checkAllServices();
+const state = overallState(results);
+const checkedAt = new Date().toISOString();
+
+const HEADLINE: Record<ServiceState, string> = {
+  operational: 'All systems nominal',
+  degraded: 'Signal degraded',
+  down: 'Contact lost',
+};
+
+const SUBLINE: Record<ServiceState, string> = {
+  operational: 'Every station is receiving and transmitting normally.',
+  degraded: 'One or more stations are responding slower or reporting a fault.',
+  down: 'One or more stations are not responding.',
+};
+
+function fmtTime(iso: string) {
+  return new Date(iso).toISOString().replace('T', ' ').replace('Z', ' UTC');
+}
+
+function labelFor(s: ServiceResult) {
+  if (s.state === 'operational') return s.kind === 'health' ? 'Healthy' : 'Operational';
+  if (s.state === 'degraded') return 'Degraded';
+  return 'Down';
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Status · rjmlaird.co.uk</title>
+    <meta name="description" content="Live status for rjmlaird.co.uk and its docs, CV, dev, and API services." />
+    <meta name="robots" content="index, follow" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="min-h-screen bg-base font-body text-ink antialiased">
+    <div class="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(0,194,168,0.10),transparent)]"></div>
+
+    <main class="relative mx-auto max-w-3xl px-6 py-16 sm:py-20">
+      <!-- Eyebrow -->
+      <div class="mb-8 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-muted">
+        <span class="h-1.5 w-1.5 rounded-full bg-teal"></span>
+        Ground station · rjmlaird network
+      </div>
+
+      <!-- Headline banner -->
+      <section
+        id="banner"
+        data-state={state}
+        class="mb-12 rounded-2xl border border-border bg-panel p-6 sm:p-8"
+      >
+        <div class="flex items-start gap-4">
+          <span class="relative mt-1.5 flex h-3 w-3 shrink-0">
+            <span
+              id="banner-ring"
+              class:list={[
+                'absolute inline-flex h-full w-full rounded-full opacity-75 motion-reduce:hidden animate-pulse-ring',
+                state === 'operational' ? 'bg-teal' : state === 'degraded' ? 'bg-amber' : 'bg-signal',
+              ]}
+            ></span>
+            <span
+              id="banner-dot"
+              class:list={[
+                'relative inline-flex h-3 w-3 rounded-full',
+                state === 'operational' ? 'bg-teal' : state === 'degraded' ? 'bg-amber' : 'bg-signal',
+              ]}
+            ></span>
+          </span>
+          <div>
+            <h1 id="banner-headline" class="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+              {HEADLINE[state]}
+            </h1>
+            <p id="banner-subline" class="mt-1.5 text-sm text-muted sm:text-base">{SUBLINE[state]}</p>
+            <p class="mt-4 font-mono text-xs text-muted">
+              Last checked <time id="checked-at" datetime={checkedAt}>{fmtTime(checkedAt)}</time>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Station cards -->
+      <section aria-label="Service status" class="grid gap-4 sm:grid-cols-2">
+        {results.map((s) => (
+          <article
+            data-service-id={s.id}
+            data-state={s.state}
+            class="rounded-2xl border border-border bg-panel p-5 transition-colors hover:border-border-strong"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="font-mono text-[11px] uppercase tracking-wider text-muted">{s.role}</p>
+                <h2 class="mt-0.5 font-display text-base font-semibold">{s.name}</h2>
+              </div>
+              <span
+                data-el="dot"
+                class:list={[
+                  'mt-1 h-2.5 w-2.5 shrink-0 rounded-full motion-safe:animate-blink',
+                  s.state === 'operational' ? 'bg-teal' : s.state === 'degraded' ? 'bg-amber' : 'bg-signal',
+                ]}
+                title={s.state}
+              ></span>
+            </div>
+
+            <!-- Signal strength: bar count reflects latency, not decoration -->
+            <div class="mt-4 flex items-end gap-1" aria-hidden="true">
+              {[1, 2, 3, 4].map((bar) => (
+                <span
+                  data-el="bar"
+                  data-bar={bar}
+                  class:list={[
+                    'w-1.5 rounded-sm transition-colors',
+                    bar === 1 ? 'h-2' : bar === 2 ? 'h-3' : bar === 3 ? 'h-4' : 'h-5',
+                    bar <= s.signal
+                      ? s.state === 'operational'
+                        ? 'bg-teal'
+                        : s.state === 'degraded'
+                          ? 'bg-amber'
+                          : 'bg-signal'
+                      : 'bg-border-strong',
+                  ]}
+                ></span>
+              ))}
+            </div>
+
+            <dl class="mt-4 space-y-1 font-mono text-xs text-muted">
+              <div class="flex justify-between gap-2">
+                <dt>Status</dt>
+                <dd data-el="state-label" class="text-ink">{labelFor(s)}</dd>
+              </div>
+              <div class="flex justify-between gap-2">
+                <dt>HTTP</dt>
+                <dd data-el="http">{s.httpStatus ?? '—'}</dd>
+              </div>
+              <div class="flex justify-between gap-2">
+                <dt>Latency</dt>
+                <dd data-el="latency">{s.latencyMs !== null ? `${s.latencyMs} ms` : '—'}</dd>
+              </div>
+              {s.detail && (
+                <div class="flex justify-between gap-2">
+                  <dt>{s.kind === 'health' ? 'Reported at' : 'Detail'}</dt>
+                  <dd data-el="detail" class="truncate text-right" title={s.detail}>{s.detail}</dd>
+                </div>
+              )}
+            </dl>
+
+            <a
+              href={s.url}
+              target="_blank"
+              rel="noreferrer"
+              class="mt-4 block truncate font-mono text-[11px] text-muted underline decoration-border-strong underline-offset-4 hover:text-teal hover:decoration-teal"
+            >
+              {s.url}
+            </a>
+          </article>
+        ))}
+      </section>
+
+      <footer class="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6 font-mono text-xs text-muted">
+        <p>Auto-refreshes every 45s · <a href="/api/status.json" class="underline decoration-border-strong underline-offset-4 hover:text-teal hover:decoration-teal">raw feed</a></p>
+        <p>rjmlaird.co.uk</p>
+      </footer>
+    </main>
+
+    <script>
+      // Client-side refresh: re-polls the JSON feed rather than reloading
+      // the page, so the console updates without a visible flash.
+      const REFRESH_MS = 45_000;
+
+      type ServiceState = 'operational' | 'degraded' | 'down';
+      interface ServiceResult {
+        id: string;
+        state: ServiceState;
+        httpStatus: number | null;
+        latencyMs: number | null;
+        signal: 0 | 1 | 2 | 3 | 4;
+        detail: string | null;
+        kind: 'page' | 'health';
+      }
+      interface StatusResponse {
+        state: ServiceState;
+        checkedAt: string;
+        services: ServiceResult[];
+      }
+
+      const HEADLINE: Record<ServiceState, string> = {
+        operational: 'All systems nominal',
+        degraded: 'Signal degraded',
+        down: 'Contact lost',
+      };
+      const SUBLINE: Record<ServiceState, string> = {
+        operational: 'Every station is receiving and transmitting normally.',
+        degraded: 'One or more stations are responding slower or reporting a fault.',
+        down: 'One or more stations are not responding.',
+      };
+      const STATE_COLOR: Record<ServiceState, string> = {
+        operational: 'bg-teal',
+        degraded: 'bg-amber',
+        down: 'bg-signal',
+      };
+
+      function labelFor(s: ServiceResult) {
+        if (s.state === 'operational') return s.kind === 'health' ? 'Healthy' : 'Operational';
+        if (s.state === 'degraded') return 'Degraded';
+        return 'Down';
+      }
+
+      function setDotColor(el: Element | null, colorClass: string) {
+        if (!el) return;
+        el.classList.remove('bg-teal', 'bg-amber', 'bg-signal');
+        el.classList.add(colorClass);
+      }
+
+      function fmtTime(iso: string) {
+        return new Date(iso).toISOString().replace('T', ' ').replace('Z', ' UTC');
+      }
+
+      async function refresh() {
+        try {
+          const res = await fetch('/api/status.json', { cache: 'no-store' });
+          if (!res.ok) return;
+          const data: StatusResponse = await res.json();
+
+          const banner = document.getElementById('banner');
+          const headline = document.getElementById('banner-headline');
+          const subline = document.getElementById('banner-subline');
+          const checkedAt = document.getElementById('checked-at');
+          if (banner) banner.setAttribute('data-state', data.state);
+          if (headline) headline.textContent = HEADLINE[data.state];
+          if (subline) subline.textContent = SUBLINE[data.state];
+          if (checkedAt) {
+            checkedAt.textContent = fmtTime(data.checkedAt);
+            checkedAt.setAttribute('datetime', data.checkedAt);
+          }
+          setDotColor(document.getElementById('banner-dot'), STATE_COLOR[data.state]);
+          setDotColor(document.getElementById('banner-ring'), STATE_COLOR[data.state]);
+
+          for (const s of data.services) {
+            const card = document.querySelector(`[data-service-id="${s.id}"]`);
+            if (!card) continue;
+            card.setAttribute('data-state', s.state);
+
+            setDotColor(card.querySelector('[data-el="dot"]'), STATE_COLOR[s.state]);
+
+            const bars = card.querySelectorAll('[data-el="bar"]');
+            bars.forEach((bar) => {
+              const n = Number(bar.getAttribute('data-bar'));
+              bar.classList.remove('bg-teal', 'bg-amber', 'bg-signal', 'bg-border-strong');
+              bar.classList.add(n <= s.signal ? STATE_COLOR[s.state] : 'bg-border-strong');
+            });
+
+            const stateLabel = card.querySelector('[data-el="state-label"]');
+            if (stateLabel) stateLabel.textContent = labelFor(s);
+
+            const http = card.querySelector('[data-el="http"]');
+            if (http) http.textContent = s.httpStatus !== null ? String(s.httpStatus) : '—';
+
+            const latency = card.querySelector('[data-el="latency"]');
+            if (latency) latency.textContent = s.latencyMs !== null ? `${s.latencyMs} ms` : '—';
+
+            const detail = card.querySelector('[data-el="detail"]');
+            if (detail && s.detail) {
+              detail.textContent = s.detail;
+              detail.setAttribute('title', s.detail);
+            }
+          }
+        } catch {
+          // Silently skip a failed refresh cycle; the next interval will retry.
+        }
+      }
+
+      setInterval(refresh, REFRESH_MS);
+    </script>
+  </body>
+</html>

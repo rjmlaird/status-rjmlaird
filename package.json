@@ -1,0 +1,30 @@
+{
+  "name": "status-rjmlaird",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "deploy": "astro build && wrangler deploy"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^11.1.0",
+    "astro": "^4.16.0"
+  },
+  "devDependencies": {
+    "@astrojs/tailwind": "^5.1.2",
+    "tailwindcss": "^3.4.13",
+    "wrangler": "^4.0.0"
+  },
+  "allowScripts": {
+    "sharp@0.33.5": true,
+    "sharp@0.34.5": true,
+    "esbuild@0.17.19": true,
+    "esbuild@0.21.5": true,
+    "esbuild@0.28.1": true,
+    "workerd@1.20250718.0": true,
+    "workerd@1.20260701.1": true
+  }
+}
