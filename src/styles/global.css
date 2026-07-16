@@ -1,20 +1,38 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-base: #0B0F1A;
+  --color-panel: #0F1526;
+  --color-panel-raised: #141B30;
+  --color-border: rgba(232,236,245,0.08);
+  --color-border-strong: rgba(232,236,245,0.16);
+  --color-ink: #E8ECF5;
+  --color-muted: #8993AD;
+  --color-teal: #00C2A8;
+  --color-amber: #F5A623;
+  --color-signal: #FF5C6C;
+
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
 
 @layer base {
   * {
-    border-color: theme('colors.border');
+    border-color: var(--color-border);
   }
+
   html {
     color-scheme: dark;
   }
+
   body {
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
+
   :focus-visible {
-    outline: 2px solid theme('colors.teal');
+    outline: 2px solid var(--color-teal);
     outline-offset: 2px;
   }
 }
